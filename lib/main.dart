@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'store.dart';
 import 'home.dart';
 import 'settings_screen.dart';
@@ -20,7 +19,12 @@ class Nexora extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       themeMode: Store.theme,
       theme: ThemeData(colorSchemeSeed: const Color(0xFFE50914), brightness: Brightness.light, useMaterial3: true),
-      darkTheme: ThemeData(colorSchemeSeed: const Color(0xFFE50914), brightness: Brightness.dark, useMaterial3: true, scaffoldBackgroundColor: const Color(0xFF0B0B0F)),
+      darkTheme: ThemeData(
+        colorSchemeSeed: const Color(0xFFE50914),
+        brightness: Brightness.dark,
+        useMaterial3: true,
+        scaffoldBackgroundColor: const Color(0xFF0B0B0F),
+      ),
       home: const Shell(),
     );
   }
