@@ -55,7 +55,7 @@ jobs:
           name: nexora-apk
           path: build/app/outputs/flutter-apk/*.apk
 
-      - uses: softprops/action-gh-release@v2
+      - uses: actions/gh-release@v2
         if: startsWith(github.ref, 'refs/tags/v')
         with:
           files: build/app/outputs/flutter-apk/*.apk
