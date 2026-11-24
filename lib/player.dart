@@ -11,7 +11,14 @@ class PlayerScreen extends StatefulWidget {
   final String title;
   final int? season;
   final int? episode;
-  const PlayerScreen({super.key, required this.id, required this.type, required this.title, this.season, this.episode});
+  const PlayerScreen({
+    super.key,
+    required this.id,
+    required this.type,
+    required this.title,
+    this.season,
+    this.episode,
+  });
 
   @override
   State<PlayerScreen> createState() => _PlayerScreenState();
@@ -29,8 +36,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
   @override
   void initState() {
     super.initState();
-    _servers = Servers.active.isEmpty ? Servers.all : Servers.active;
-    SystemChrome.setPreferredOrientations([DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight, DeviceOrientation.portraitUp]);
+    _servers = Servers.ordered(adultFirst: Store.adult);
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+      DeviceOrientation.portraitUp,
+    ]);
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     _load();
   }
@@ -42,10 +53,15 @@ class _PlayerScreenState extends State<PlayerScreen> {
     super.dispose();
   }
 
+  String _urlOf(Provider p) => p.build(widget.id, widget.season ?? 1, widget.episode ?? 1, _tv);
+
   void _load() {
-    if (_i >= _servers.length) return;
-    final url = _servers[_i].build(widget.id, widget.season ?? 1, widget.episode ?? 1, _tv);
-    setState(() { _loading = true; _stuck = false; });
+    if (_servers.isEmpty || _i >= _servers.length) return;
+    final url = _urlOf(_servers[_i]);
+    setState(() {
+      _loading = true;
+      _stuck = false;
+    });
 
     _c = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
@@ -53,13 +69,14 @@ class _PlayerScreenState extends State<PlayerScreen> {
       ..setMediaPlaybackRequiresUserGesture(false)
       ..setNavigationDelegate(NavigationDelegate(
         onPageFinished: (_) async {
+          if (!mounted) return;
           setState(() => _loading = false);
-          await Future.delayed(const Duration(seconds: 6));
+          await Future.delayed(const Duration(seconds: 7));
           if (!mounted || _c == null) return;
           try {
             final r = await _c!.runJavaScriptReturningResult(
                 "document.querySelectorAll('video').length");
-            if (r.toString() == '0') setState(() => _stuck = true);
+            if (r.toString() == '0' && mounted) setState(() => _stuck = true);
           } catch (_) {}
         },
         onWebResourceError: (e) {
@@ -72,7 +89,10 @@ class _PlayerScreenState extends State<PlayerScreen> {
   void _next() {
     if (!mounted) return;
     if (_i + 1 >= _servers.length) {
-      setState(() { _loading = false; _stuck = true; });
+      setState(() {
+        _loading = false;
+        _stuck = true;
+      });
       return;
     }
     setState(() => _i++);
@@ -87,7 +107,10 @@ class _PlayerScreenState extends State<PlayerScreen> {
       body: SafeArea(
         child: Stack(
           children: [
-            if (_c != null) WebViewWidget(controller: _c!) else const Center(child: CircularProgressIndicator()),
+            if (_c != null)
+              WebViewWidget(controller: _c!)
+            else
+              const Center(child: CircularProgressIndicator()),
             if (_loading) const Center(child: CircularProgressIndicator()),
             if (_stuck)
               Center(
@@ -102,7 +125,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
                 ),
               ),
             Positioned(
-              top: 0, left: 0, right: 0,
+              top: 0,
+              left: 0,
+              right: 0,
               child: Container(
                 color: Colors.black54,
                 padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -111,41 +136,68 @@ class _PlayerScreenState extends State<PlayerScreen> {
                     IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => Navigator.pop(context)),
                     Expanded(child: Text(widget.title, maxLines: 1, overflow: TextOverflow.ellipsis)),
                     Text('${_i + 1}/${_servers.length}', style: const TextStyle(fontSize: 11)),
-                    IconButton(
-                      tooltip: 'Agla server',
-                      icon: const Icon(Icons.switch_video),
-                      onPressed: _next,
-                    ),
+                    IconButton(tooltip: 'Agla server', icon: const Icon(Icons.switch_video), onPressed: _next),
                     IconButton(
                       tooltip: 'Browser me kholo',
                       icon: const Icon(Icons.open_in_new),
-                      onPressed: p == null ? null : () => launchUrl(Uri.parse(
-                          p.build(widget.id, widget.season ?? 1, widget.episode ?? 1, _tv)),
-                          mode: LaunchMode.externalApplication),
+                      onPressed: p == null
+                          ? null
+                          : () => launchUrl(Uri.parse(_urlOf(p)), mode: LaunchMode.externalApplication),
                     ),
                     PopupMenuButton<String>(
                       tooltip: 'Server',
                       icon: const Icon(Icons.dns),
-                      onSelected: (n) { _i = _servers.indexWhere((e) => e.name == n); _load(); },
-                      itemBuilder: (_) => _servers.map((e) => PopupMenuItem(value: e.name, child: Text(e.name))).toList(),
+                      onSelected: (n) {
+                        final idx = Servers.indexOf(_servers, n);
+                        if (idx < 0) return;
+                        _i = idx;
+                        _load();
+                      },
+                      itemBuilder: (_) => _servers
+                          .map((e) => PopupMenuItem(value: e.name, child: Text(e.name)))
+                          .toList(),
                     ),
                   ],
                 ),
               ),
             ),
             Positioned(
-              bottom: 0, left: 0, right: 0,
+              bottom: 0,
+              left: 0,
+              right: 0,
               child: Container(
                 color: Colors.black54,
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 child: Row(
                   children: [
-                    _menu('Audio', Store.audio, const {'hi': 'Hindi', 'en': 'English', 'te': 'Telugu', 'ta': 'Tamil', 'ml': 'Malayalam', 'kn': 'Kannada', 'pa': 'Punjabi', 'bn': 'Bengali', 'mr': 'Marathi'},
-                        (v) { Store.audio = v; _load(); }),
-                    _menu('Subtitle', Store.sub, const {'off': 'Off', 'hi': 'Hindi', 'en': 'English'},
-                        (v) { Store.sub = v; _load(); }),
-                    _menu('Quality', Store.quality, const {'auto': 'Auto', '1080': '1080p', '720': '720p', '480': '480p', '360': '360p'},
-                        (v) { Store.quality = v; _load(); }),
+                    _menu('Audio', Store.audio, const {
+                      'hi': 'Hindi',
+                      'en': 'English',
+                      'te': 'Telugu',
+                      'ta': 'Tamil',
+                      'ml': 'Malayalam',
+                      'kn': 'Kannada',
+                      'pa': 'Punjabi',
+                      'bn': 'Bengali',
+                      'mr': 'Marathi',
+                    }, (v) {
+                      Store.audio = v;
+                      _load();
+                    }),
+                    _menu('Subtitle', Store.sub, const {'off': 'Off', 'hi': 'Hindi', 'en': 'English'}, (v) {
+                      Store.sub = v;
+                      _load();
+                    }),
+                    _menu('Quality', Store.quality, const {
+                      'auto': 'Auto',
+                      '1080': '1080p',
+                      '720': '720p',
+                      '480': '480p',
+                      '360': '360p',
+                    }, (v) {
+                      Store.quality = v;
+                      _load();
+                    }),
                   ],
                 ),
               ),
