@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'main.dart';
 
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key});
+  final Function(bool)? onToggleAdultMode;
+  const SettingsScreen({super.key, this.onToggleAdultMode});
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -55,38 +55,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 20),
           SwitchListTile(
-            title: const Text('18+ Content'),
+            title: const Text('18+ Content (Hardcore Only)'),
+            activeColor: Colors.redAccent,
             value: _isAdultMode,
             onChanged: (val) async {
               final prefs = await SharedPreferences.getInstance();
               prefs.setBool('adult_mode', val);
               setState(() => _isAdultMode = val);
-              // App restart ya rebuild force karne ke liye main.dart wala build trigger hoga
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(builder: (context) => const NexoraApp()),
-                (route) => false,
-              );
+              if (widget.onToggleAdultMode != null) widget.onToggleAdultMode!(val);
             },
           ),
-          const Divider(),
-          const Text('Servers (Only working)', style: TextStyle(color: Colors.grey)),
+          const Divider(height: 40),
+          const Text('Working Servers', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+          const SizedBox(height: 10),
           SwitchListTile(title: const Text('VidLink'), value: true, onChanged: (v) {}),
           SwitchListTile(title: const Text('Videasy'), value: true, onChanged: (v) {}),
-          
-          const SizedBox(height: 40),
-          
-          // CREDIT YAHAN HAI
+          SwitchListTile(title: const Text('EmbedWave'), value: true, onChanged: (v) {}),
+          const SizedBox(height: 60),
           const Center(
-            child: Column(
-              children: [
-                Text('NEXORA', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, letterSpacing: 3)),
-                SizedBox(height: 5),
-                Text('Made by insane ~ hulk', style: TextStyle(color: Colors.white70, fontSize: 12, fontStyle: FontStyle.italic)),
-              ],
-            ),
+            child: Text('Made by insane~Hulk', style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic)),
           ),
-          const SizedBox(height: 20),
+          const Center(child: Text('NEXORA', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, letterSpacing: 4))),
         ],
       ),
     );
