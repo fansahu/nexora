@@ -1,56 +1,85 @@
 import 'package:flutter/material.dart';
-import 'store.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'home.dart';
-import 'settings_screen.dart';
+import 'search.dart'; // assuming tumhare paas ye hai
+import 'settings.dart';
+import 'adult_zone.dart'; // ek nayi file banani padegi 18+ ke liye
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await Store.init();
-  runApp(const Nexora());
+void main() {
+  runApp(const NexoraApp());
 }
 
-class Nexora extends StatelessWidget {
-  const Nexora({super.key});
+class NexoraApp extends StatefulWidget {
+  const NexoraApp({super.key});
+
+  @override
+  State<NexoraApp> createState() => _NexoraAppState();
+}
+
+class _NexoraAppState extends State<NexoraApp> {
+  bool isAdultMode = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPrefs();
+  }
+
+  Future<void> _loadPrefs() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() => isAdultMode = prefs.getBool('adult_mode') ?? false);
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Nexora',
       debugShowCheckedModeBanner: false,
-      themeMode: Store.theme,
-      theme: ThemeData(colorSchemeSeed: const Color(0xFFE50914), brightness: Brightness.light, useMaterial3: true),
-      darkTheme: ThemeData(
-        colorSchemeSeed: const Color(0xFFE50914),
-        brightness: Brightness.dark,
-        useMaterial3: true,
-        scaffoldBackgroundColor: const Color(0xFF0B0B0F),
+      theme: ThemeData.dark().copyWith(
+        scaffoldBackgroundColor: Colors.black,
+        appBarTheme: const AppBarTheme(backgroundColor: Colors.black),
+        bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+          backgroundColor: Color(0xFF1E1E1E),
+          selectedItemColor: Colors.redAccent,
+          unselectedItemColor: Colors.grey,
+        ),
       ),
-      home: const Shell(),
+      home: MainScreen(isAdultMode: isAdultMode),
     );
   }
 }
 
-class Shell extends StatefulWidget {
-  const Shell({super.key});
+class MainScreen extends StatefulWidget {
+  final bool isAdultMode;
+  const MainScreen({super.key, required this.isAdultMode});
+
   @override
-  State<Shell> createState() => _ShellState();
+  State<MainScreen> createState() => _MainScreenState();
 }
 
-class _ShellState extends State<Shell> {
-  int _i = 0;
+class _MainScreenState extends State<MainScreen> {
+  int _currentIndex = 0;
 
   @override
   Widget build(BuildContext context) {
+    final List<Widget> _pages = [
+      const HomeScreen(),
+      const Center(child: Text('Search Screen')), // Yahan apna Search dalna
+      if (widget.isAdultMode) const AdultZoneScreen(), // Naya 18+ page
+      const SettingsScreen(),
+    ];
+
     return Scaffold(
-      body: IndexedStack(index: _i, children: const [HomeScreen(), SearchScreen(), AdultScreen(), SettingsScreen()]),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _i,
-        onDestinationSelected: (v) => setState(() => _i = v),
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Home'),
-          NavigationDestination(icon: Icon(Icons.search), label: 'Search'),
-          NavigationDestination(icon: Icon(Icons.local_fire_department_outlined), selectedIcon: Icon(Icons.local_fire_department), label: '18+'),
-          NavigationDestination(icon: Icon(Icons.settings_outlined), selectedIcon: Icon(Icons.settings), label: 'Settings'),
+      body: _pages[_currentIndex],
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        onTap: (index) => setState(() => _currentIndex = index),
+        items: [
+          const BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+          const BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
+          if (widget.isAdultMode)
+            const BottomNavigationBarItem(icon: Icon(Icons.local_fire_department), label: '18+'),
+          const BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings'),
         ],
       ),
     );
