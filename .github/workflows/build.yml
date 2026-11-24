@@ -2,11 +2,7 @@ name: build
 on:
   push:
     branches: [ main ]
-    tags: [ 'v*' ]
   workflow_dispatch:
-
-permissions:
-  contents: write
 
 jobs:
   apk:
@@ -21,41 +17,38 @@ jobs:
         with:
           flutter-version: '3.24.5'
           channel: stable
-          cache: true
+
+      - name: Info
+        run: |
+          pwd
+          ls -la
+          flutter --version
+          ls lib
+          ls tools
+          head -20 pubspec.yaml
 
       - name: Scaffold android
         run: |
           flutter create --platforms=android --org com.nexora --project-name nexora /tmp/base
           cp -r /tmp/base/android .
+          ls android/app
 
-      - name: Signing
-        run: |
-          if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
-            echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/keystore.jks
-            echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" > android/key.properties
-            echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/key.properties
-          else
-            keytool -genkeypair -v -keystore android/app/keystore.jks -keyalg RSA -keysize 2048 \
-              -validity 10000 -alias upload -storepass nexora123 -keypass nexora123 \
-              -dname "CN=Nexora,OU=App,O=Personal,L=Delhi,C=IN"
-            echo "storePassword=nexora123" > android/key.properties
-            echo "keyPassword=nexora123" >> android/key.properties
-          fi
-          echo "storeFile=keystore.jks" >> android/key.properties
-          echo "keyAlias=upload" >> android/key.properties
-
-      - name: Patch gradle + manifest
+      - name: Patch
         run: python3 tools/patch.py
 
-      - run: flutter pub get
-      - run: flutter build apk --release --split-per-abi --dart-define=TMDB_KEY=${{ secrets.TMDB_API_KEY }}
+      - name: Pub get
+        run: flutter pub get
+
+      - name: Analyze
+        continue-on-error: true
+        run: flutter analyze
+
+      - name: Build
+        run: flutter build apk --release --split-per-abi --dart-define=TMDB_KEY=${{ secrets.TMDB_API_KEY }}
 
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: nexora-apk
           path: build/app/outputs/flutter-apk/*.apk
-
-      - uses: actions/gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/v')
-        with:
-          files: build/app/outputs/flutter-apk/*.apk
+          if-no-files-found: warn
