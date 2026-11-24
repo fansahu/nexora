@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'providers.dart';
 import 'store.dart';
 
@@ -55,7 +56,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   String _urlOf(Provider p) => p.build(widget.id, widget.season ?? 1, widget.episode ?? 1, _tv);
 
-  void _load() {
+  Future<void> _load() async {
     if (_servers.isEmpty || _i >= _servers.length) return;
     final url = _urlOf(_servers[_i]);
     setState(() {
@@ -63,10 +64,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
       _stuck = false;
     });
 
-    _c = WebViewController()
+    final c = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(Colors.black)
-      ..setMediaPlaybackRequiresUserGesture(false)
       ..setNavigationDelegate(NavigationDelegate(
         onPageFinished: (_) async {
           if (!mounted) return;
@@ -82,8 +82,17 @@ class _PlayerScreenState extends State<PlayerScreen> {
         onWebResourceError: (e) {
           if (e.isForMainFrame ?? true) _next();
         },
-      ))
-      ..loadRequest(Uri.parse(url));
+      ));
+
+    // Autoplay: Android pe hi possible hai
+    final platform = c.platform;
+    if (platform is AndroidWebViewController) {
+      await platform.setMediaPlaybackRequiresUserGesture(false);
+    }
+
+    if (!mounted) return;
+    setState(() => _c = c);
+    await c.loadRequest(Uri.parse(url));
   }
 
   void _next() {
