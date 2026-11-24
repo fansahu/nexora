@@ -16,13 +16,18 @@ class _DetailsScreenState extends State<DetailsScreen> {
   bool get _tv => widget.item.type == 'tv';
 
   void _play({int? ep}) {
-    Navigator.push(context, MaterialPageRoute(builder: (_) => PlayerScreen(
-      id: widget.item.id,
-      type: widget.item.type,
-      title: widget.item.title,
-      season: _season,
-      episode: ep ?? 1,
-    )));
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PlayerScreen(
+          id: widget.item.id,
+          type: widget.item.type,
+          title: widget.item.title,
+          season: _season,
+          episode: ep ?? 1,
+        ),
+      ),
+    );
   }
 
   @override
@@ -68,7 +73,10 @@ class _DetailsScreenState extends State<DetailsScreen> {
                           items: List.generate(10, (i) => i + 1)
                               .map((s) => DropdownMenuItem(value: s, child: Text('$s')))
                               .toList(),
-                          onChanged: (v) => setState(() { _season = v!; _episodes = 0; }),
+                          onChanged: (v) => setState(() {
+                            _season = v!;
+                            _episodes = 0;
+                          }),
                         ),
                         const SizedBox(width: 12),
                         OutlinedButton(
@@ -83,10 +91,10 @@ class _DetailsScreenState extends State<DetailsScreen> {
                     if (_episodes > 0)
                       Wrap(
                         spacing: 8,
-                        children: List.generate(_episodes, (i) => ActionChip(
-                          label: Text('EP ${i + 1}'),
-                          onPressed: () => _play(ep: i + 1),
-                        )),
+                        children: List.generate(
+                          _episodes,
+                          (i) => ActionChip(label: Text('EP ${i + 1}'), onPressed: () => _play(ep: i + 1)),
+                        ),
                       ),
                   ],
                   const SizedBox(height: 30),
