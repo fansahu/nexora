@@ -12,7 +12,6 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   final TextEditingController _tmdbController = TextEditingController();
   bool _isAdultMode = false;
-  bool _isObscure = true;
 
   @override
   void initState() {
@@ -37,16 +36,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
         children: [
           TextField(
             controller: _tmdbController,
-            obscureText: _isObscure,
+            obscureText: true, // Hamesha hidden rahega
             enableSuggestions: false,
             autocorrect: false,
-            decoration: InputDecoration(
+            decoration: const InputDecoration(
               labelText: 'TMDB API Key',
-              border: const OutlineInputBorder(),
-              suffixIcon: IconButton(
-                icon: Icon(_isObscure ? Icons.visibility : Icons.visibility_off),
-                onPressed: () => setState(() => _isObscure = !_isObscure),
-              ),
+              border: OutlineInputBorder(),
+              // Eye button (suffixIcon) yahan se hata diya gaya hai
             ),
             onChanged: (val) async {
               final prefs = await SharedPreferences.getInstance();
