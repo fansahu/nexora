@@ -13,6 +13,16 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   String apiKey = '';
+  String selectedCategory = 'South'; // Default category
+
+  // Categories aur unke API endpoints
+  final Map<String, String> categories = {
+    'South': '/discover/movie?with_original_language=te,ta,ml,kn&sort_by=popularity.desc',
+    'Korean': '/discover/movie?with_original_language=ko&sort_by=popularity.desc',
+    'Hollywood': '/discover/movie?with_original_language=en&sort_by=popularity.desc',
+    'Bollywood': '/discover/movie?with_original_language=hi&sort_by=popularity.desc',
+    'Series': '/discover/tv?sort_by=popularity.desc',
+  };
 
   @override
   void initState() {
@@ -27,7 +37,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<List<dynamic>> fetchMovies(String url) async {
     if (apiKey.isEmpty) return [];
-    // Proper URL encode for TMDB API
     final response = await http.get(Uri.parse('https://api.themoviedb.org/3$url&api_key=$apiKey'));
     if (response.statusCode == 200) {
       return json.decode(response.body)['results'] ?? [];
@@ -41,6 +50,39 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('NEXORA', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, letterSpacing: 2)),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(50),
+          child: SizedBox(
+            height: 50,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: categories.length,
+              itemBuilder: (context, index) {
+                final catName = categories.keys.elementAt(index);
+                final isSelected = catName == selectedCategory;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8.0),
+                  child: ChoiceChip(
+                    label: Text(catName),
+                    selected: isSelected,
+                    selectedColor: Colors.redAccent,
+                    backgroundColor: Colors.grey[800],
+                    labelStyle: TextStyle(
+                      color: isSelected ? Colors.white : Colors.grey,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    ),
+                    onSelected: (selected) {
+                      if (selected) {
+                        setState(() => selectedCategory = catName);
+                      }
+                    },
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
       ),
       body: apiKey.isEmpty
           ? const Center(child: Text('Set TMDB API Key in Settings', style: TextStyle(color: Colors.white)))
@@ -48,11 +90,18 @@ class _HomeScreenState extends State<HomeScreen> {
               onRefresh: () async => setState(() {}),
               child: ListView(
                 children: [
-                  // Fix 1: comma separated languages for South Indian
-                  _buildRail('South Indian', '/discover/movie?with_original_language=te,ta,ml,kn&sort_by=popularity.desc'),
-                  // Fix 2: Top rated
-                  _buildRail('Top Rated', '/movie/top_rated'),
-                  _buildRail('Action Movies', '/discover/movie?with_genres=28'),
+                  // Agar category Series hai to uske alag section ho sakte hain, 
+                  // filhal yahan hum Popularity aur Top Rated dikha rahe hain.
+                  _buildRail('Popular $selectedCategory', categories[selectedCategory]!),
+                  
+                  // Series ke liye alag genre specific ya top rated
+                  if (selectedCategory == 'Series')
+                    _buildRail('Top Rated Series', '/tv/top_rated')
+                  else
+                    _buildRail('Top Rated $selectedCategory', categories[selectedCategory]!.replaceAll('popularity.desc', 'vote_average.desc')),
+                    
+                  if (selectedCategory != 'Series')
+                    _buildRail('Action $selectedCategory', '${categories[selectedCategory]!.split('?')[0]}?with_original_language=${categories[selectedCategory]!.split('with_original_language=')[1].split('&')[0]}&with_genres=28'),
                 ],
               ),
             ),
@@ -64,7 +113,7 @@ class _HomeScreenState extends State<HomeScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
           child: Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
         ),
         SizedBox(
@@ -76,7 +125,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 return const Center(child: CircularProgressIndicator(color: Colors.redAccent));
               }
               if (snapshot.hasError) {
-                // Ab error screen pe dikhega (red text)
                 return Center(child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.redAccent, fontSize: 12)));
               }
               if (!snapshot.hasData || snapshot.data!.isEmpty) {
@@ -88,10 +136,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 itemCount: movies.length,
                 itemBuilder: (context, index) {
                   final movie = movies[index];
+                  final titleStr = movie['title'] ?? movie['name'] ?? 'No Title';
+                  final poster = movie['poster_path'];
+                  
                   return GestureDetector(
                     onTap: () {
-                      // Yahan player ka URL dalna hoga. Filhal TMDB ID use karke open kar rahe hain
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => PlayerScreen(videoUrl: 'https://vidlink.pro/movie/${movie['id']}')));
+                      // Player me bhej rahe hain. Series ke liye URL alag hoga.
+                      final type = selectedCategory == 'Series' ? 'tv' : 'movie';
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => PlayerScreen(videoUrl: 'https://vidlink.pro/$type/${movie['id']}')));
                     },
                     child: Container(
                       width: 120,
@@ -101,15 +153,16 @@ class _HomeScreenState extends State<HomeScreen> {
                           Expanded(
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(8),
-                              child: movie['poster_path'] != null
-                                  ? Image.network('https://image.tmdb.org/t/p/w200${movie['poster_path']}', fit: BoxFit.cover)
+                              child: poster != null
+                                  ? Image.network('https://image.tmdb.org/t/p/w200$poster', fit: BoxFit.cover)
                                   : Container(color: Colors.grey),
                             ),
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            movie['title'] ?? movie['name'] ?? 'No Title',
+                            titleStr,
                             maxLines: 2,
+                            textAlign: TextAlign.center,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(color: Colors.white, fontSize: 12),
                           ),
