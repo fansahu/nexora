@@ -16,14 +16,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void initState() {
     super.initState();
-    _loadSettings();
-  }
-
-  Future<void> _loadSettings() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _tmdbController.text = prefs.getString('tmdb_key') ?? '';
-      _isAdultMode = prefs.getBool('adult_mode') ?? false;
+    SharedPreferences.getInstance().then((prefs) {
+      setState(() {
+        _tmdbController.text = prefs.getString('tmdb_key') ?? '';
+        _isAdultMode = prefs.getBool('adult_mode') ?? false;
+      });
     });
   }
 
@@ -36,14 +33,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
         children: [
           TextField(
             controller: _tmdbController,
-            obscureText: true, // Hamesha hidden rahega
+            obscureText: true, 
             enableSuggestions: false,
             autocorrect: false,
-            decoration: const InputDecoration(
-              labelText: 'TMDB API Key',
-              border: OutlineInputBorder(),
-              // Eye button (suffixIcon) yahan se hata diya gaya hai
-            ),
+            decoration: const InputDecoration(labelText: 'TMDB API Key', border: OutlineInputBorder()),
             onChanged: (val) async {
               final prefs = await SharedPreferences.getInstance();
               prefs.setString('tmdb_key', val);
@@ -64,13 +57,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const Divider(height: 40),
           const Text('Working Servers', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
           const SizedBox(height: 10),
-          SwitchListTile(title: const Text('VidLink'), value: true, onChanged: (v) {}),
-          SwitchListTile(title: const Text('Videasy'), value: true, onChanged: (v) {}),
-          SwitchListTile(title: const Text('EmbedWave'), value: true, onChanged: (v) {}),
+          const SwitchListTile(title: Text('VidLink'), value: true, onChanged: null),
+          const SwitchListTile(title: Text('Videasy'), value: true, onChanged: null),
+          const SwitchListTile(title: Text('EmbedWave'), value: true, onChanged: null),
           const SizedBox(height: 60),
-          const Center(
-            child: Text('Made by insane~Hulk', style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic)),
-          ),
+          const Center(child: Text('Made by insane~Hulk', style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic))),
           const Center(child: Text('NEXORA', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, letterSpacing: 4))),
         ],
       ),
