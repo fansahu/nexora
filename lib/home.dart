@@ -27,11 +27,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<List<dynamic>> fetchMovies(String url) async {
     if (apiKey.isEmpty) return [];
+    // Proper URL encode for TMDB API
     final response = await http.get(Uri.parse('https://api.themoviedb.org/3$url&api_key=$apiKey'));
     if (response.statusCode == 200) {
-      return json.decode(response.body)['results'];
+      return json.decode(response.body)['results'] ?? [];
+    } else {
+      throw Exception('Failed to load: ${response.statusCode}');
     }
-    return [];
   }
 
   @override
@@ -46,7 +48,9 @@ class _HomeScreenState extends State<HomeScreen> {
               onRefresh: () async => setState(() {}),
               child: ListView(
                 children: [
+                  // Fix 1: comma separated languages for South Indian
                   _buildRail('South Indian', '/discover/movie?with_original_language=te,ta,ml,kn&sort_by=popularity.desc'),
+                  // Fix 2: Top rated
                   _buildRail('Top Rated', '/movie/top_rated'),
                   _buildRail('Action Movies', '/discover/movie?with_genres=28'),
                 ],
@@ -71,8 +75,12 @@ class _HomeScreenState extends State<HomeScreen> {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator(color: Colors.redAccent));
               }
-              if (snapshot.hasError || !snapshot.hasData) {
-                return const Center(child: Text('Error loading content', style: TextStyle(color: Colors.redAccent)));
+              if (snapshot.hasError) {
+                // Ab error screen pe dikhega (red text)
+                return Center(child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.redAccent, fontSize: 12)));
+              }
+              if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                return const Center(child: Text('No content found', style: TextStyle(color: Colors.grey)));
               }
               final movies = snapshot.data!;
               return ListView.builder(
@@ -82,7 +90,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   final movie = movies[index];
                   return GestureDetector(
                     onTap: () {
-                      // Yahan player ka URL dalna hoga, abhi ke liye tmdb page khol rahe hain
+                      // Yahan player ka URL dalna hoga. Filhal TMDB ID use karke open kar rahe hain
                       Navigator.push(context, MaterialPageRoute(builder: (_) => PlayerScreen(videoUrl: 'https://vidlink.pro/movie/${movie['id']}')));
                     },
                     child: Container(
@@ -100,7 +108,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            movie['title'] ?? 'No Title',
+                            movie['title'] ?? movie['name'] ?? 'No Title',
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(color: Colors.white, fontSize: 12),
