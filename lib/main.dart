@@ -4,6 +4,7 @@ import 'home.dart';
 import 'search.dart';
 import 'settings.dart';
 import 'adult.dart';
+import 'webseries.dart'; // Naya import
 
 void main() => runApp(const NexoraApp());
 
@@ -69,8 +70,7 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void didUpdateWidget(covariant MainScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // 18+ off hote hi home pe wapas bhej de
-    if (oldWidget.isAdultMode && !widget.isAdultMode && _currentIndex == 2) {
+    if (oldWidget.isAdultMode && !widget.isAdultMode && _currentIndex == 3) { // Index 3 kyunki ek naya tab add ho raha hai
       setState(() => _currentIndex = 0);
     }
   }
@@ -80,6 +80,7 @@ class _MainScreenState extends State<MainScreen> {
     final List<Widget> pages = [
       const HomeScreen(),
       const SearchScreen(),
+      const WebSeriesScreen(), // Naya Tab
       if (widget.isAdultMode) const AdultScreen(),
       SettingsScreen(onToggleAdultMode: widget.onModeChanged),
     ];
@@ -87,6 +88,7 @@ class _MainScreenState extends State<MainScreen> {
     final List<BottomNavigationBarItem> navItems = [
       const BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
       const BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
+      const BottomNavigationBarItem(icon: Icon(Icons.link), label: 'Direct'), // Naya Tab
       if (widget.isAdultMode) const BottomNavigationBarItem(icon: Icon(Icons.local_fire_department), label: '18+'),
       const BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings'),
     ];
