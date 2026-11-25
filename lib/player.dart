@@ -17,6 +17,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
   late final WebViewController controller;
   String currentServer = 'VidLink';
   bool _showControls = false;
+  bool _isWebLoading = true;
 
   final Map<String, String> servers = {
     'VidLink': 'https://vidlink.pro',
@@ -35,8 +36,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
   void _initController() {
     String url = '';
     final base = servers[currentServer]!;
-    
-    // Fallbacks if season/episode are null
     final s = widget.season ?? 1;
     final e = widget.episode ?? 1;
 
@@ -44,11 +43,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
       if (currentServer == '2Embed') url = "$base/${widget.id}";
       else url = "$base/movie/${widget.id}";
     } else {
-      // TV Series URL formatting
       if (currentServer == '2Embed') {
         url = "https://www.2embed.cc/embedtv/${widget.id}&s=$s&e=$e";
-      } else if (currentServer == 'Vidsrc.to') {
-        url = "$base/tv/${widget.id}/$s/$e";
       } else {
         url = "$base/tv/${widget.id}/$s/$e";
       }
@@ -59,7 +55,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
       ..setBackgroundColor(Colors.black)
       ..setNavigationDelegate(
         NavigationDelegate(
+          onPageStarted: (url) => setState(() => _isWebLoading = true),
           onPageFinished: (u) {
+            setState(() => _isWebLoading = false);
             controller.runJavaScript('''
               var style = document.createElement('style');
               style.innerHTML = 'video::-webkit-media-controls { display:none !important; }';
@@ -91,6 +89,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
         child: Stack(
           children: [
             WebViewWidget(controller: controller),
+            if (_isWebLoading)
+              const Center(child: CircularProgressIndicator(color: Colors.redAccent)),
             if (_showControls)
               Positioned(
                 bottom: 30, left: 20, right: 20,
