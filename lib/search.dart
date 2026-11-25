@@ -12,7 +12,6 @@ class SearchScreen extends StatefulWidget {
 
 class _SearchScreenState extends State<SearchScreen> {
   String apiKey = '';
-  String query = '';
   List<dynamic> results = [];
   bool isLoading = false;
 
@@ -41,32 +40,47 @@ class _SearchScreenState extends State<SearchScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: TextField(
-          decoration: const InputDecoration(hintText: 'Search Movies, Series...', border: InputBorder.none),
-          style: const TextStyle(color: Colors.white),
-          onChanged: _search,
+        title: Container(
+          height: 45,
+          decoration: BoxDecoration(color: Colors.grey[900], borderRadius: BorderRadius.circular(30)),
+          child: TextField(
+            style: const TextStyle(color: Colors.white),
+            decoration: const InputDecoration(
+              hintText: 'Search Movies, Series...',
+              hintStyle: TextStyle(color: Colors.grey),
+              prefixIcon: Icon(Icons.search, color: Colors.grey),
+              border: InputBorder.none,
+              contentPadding: EdgeInsets.symmetric(vertical: 12),
+            ),
+            onChanged: _search,
+          ),
         ),
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator(color: Colors.redAccent))
-          : GridView.builder(
-              padding: const EdgeInsets.all(10),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, childAspectRatio: 0.6, crossAxisSpacing: 10, mainAxisSpacing: 10),
-              itemCount: results.length,
-              itemBuilder: (context, index) {
-                final m = results[index];
-                final type = m['media_type'] ?? 'movie';
-                return GestureDetector(
-                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DetailsScreen(id: m['id'], type: type, posterPath: m['poster_path']))),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: m['poster_path'] != null
-                        ? Image.network('https://image.tmdb.org/t/p/w200${m['poster_path']}', fit: BoxFit.cover)
-                        : Container(color: Colors.grey),
+          : results.isEmpty
+              ? const Center(child: Text('Search anything across the world.', style: TextStyle(color: Colors.grey)))
+              : GridView.builder(
+                  padding: const EdgeInsets.all(12),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3, childAspectRatio: 0.6, crossAxisSpacing: 12, mainAxisSpacing: 12,
                   ),
-                );
-              },
-            ),
+                  itemCount: results.length,
+                  itemBuilder: (context, index) {
+                    final m = results[index];
+                    return GestureDetector(
+                      onTap: () => Navigator.push(context, MaterialPageRoute(
+                        builder: (_) => DetailsScreen(id: m['id'], type: m['media_type'] ?? 'movie', posterPath: m['poster_path'])
+                      )),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: m['poster_path'] != null
+                            ? Image.network('https://image.tmdb.org/t/p/w200${m['poster_path']}', fit: BoxFit.cover)
+                            : Container(color: Colors.grey[800], child: const Icon(Icons.movie, color: Colors.grey)),
+                      ),
+                    );
+                  },
+                ),
     );
   }
 }
