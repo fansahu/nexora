@@ -5,7 +5,10 @@ import 'package:webview_flutter_android/webview_flutter_android.dart';
 class PlayerScreen extends StatefulWidget {
   final int id;
   final String type;
-  const PlayerScreen({super.key, required this.id, required this.type});
+  final int? season;
+  final int? episode;
+
+  const PlayerScreen({super.key, required this.id, required this.type, this.season, this.episode});
   @override
   State<PlayerScreen> createState() => _PlayerScreenState();
 }
@@ -19,6 +22,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
     'VidLink': 'https://vidlink.pro',
     'Videasy': 'https://player.videasy.net',
     'EmbedWave': 'https://embed.su/embed',
+    'Vidsrc.to': 'https://vidsrc.to/embed',
+    '2Embed': 'https://www.2embed.cc/embed',
   };
 
   @override
@@ -28,8 +33,26 @@ class _PlayerScreenState extends State<PlayerScreen> {
   }
 
   void _initController() {
-    String baseUrl = servers[currentServer]!;
-    String url = "$baseUrl/${widget.type}/${widget.id}";
+    String url = '';
+    final base = servers[currentServer]!;
+    
+    // Fallbacks if season/episode are null
+    final s = widget.season ?? 1;
+    final e = widget.episode ?? 1;
+
+    if (widget.type == 'movie') {
+      if (currentServer == '2Embed') url = "$base/${widget.id}";
+      else url = "$base/movie/${widget.id}";
+    } else {
+      // TV Series URL formatting
+      if (currentServer == '2Embed') {
+        url = "https://www.2embed.cc/embedtv/${widget.id}&s=$s&e=$e";
+      } else if (currentServer == 'Vidsrc.to') {
+        url = "$base/tv/${widget.id}/$s/$e";
+      } else {
+        url = "$base/tv/${widget.id}/$s/$e";
+      }
+    }
 
     controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
@@ -70,21 +93,31 @@ class _PlayerScreenState extends State<PlayerScreen> {
             WebViewWidget(controller: controller),
             if (_showControls)
               Positioned(
-                bottom: 40, left: 20, right: 20,
+                bottom: 30, left: 20, right: 20,
                 child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(color: Colors.black.withOpacity(0.9), borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.9), 
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.white24)
+                  ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      DropdownButton<String>(
-                        value: currentServer,
-                        dropdownColor: Colors.black,
-                        style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold),
-                        items: servers.keys.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
-                        onChanged: (v) => _changeServer(v!),
+                      const Icon(Icons.dns, color: Colors.redAccent),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: currentServer,
+                            isExpanded: true,
+                            dropdownColor: Colors.black,
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                            items: servers.keys.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                            onChanged: (v) => _changeServer(v!),
+                          ),
+                        ),
                       ),
-                      const Text('Audio/Subs: Hardware keys', style: TextStyle(color: Colors.grey, fontSize: 12)),
                     ],
                   ),
                 ),
