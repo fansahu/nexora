@@ -4,7 +4,7 @@ import 'home.dart';
 import 'search.dart';
 import 'settings.dart';
 import 'adult.dart';
-import 'webseries.dart'; // Naya import
+import 'webseries.dart'; 
 
 void main() => runApp(const NexoraApp());
 
@@ -70,7 +70,9 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void didUpdateWidget(covariant MainScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.isAdultMode && !widget.isAdultMode && _currentIndex == 3) { // Index 3 kyunki ek naya tab add ho raha hai
+    // Agar 18+ off ho jaye aur user 18+ tab par ho, toh home pe bhej do
+    // 18+ tab ka index 3 hai (Home-0, Search-1, Direct-2, 18+-3, Settings-4)
+    if (oldWidget.isAdultMode && !widget.isAdultMode && _currentIndex == 3) {
       setState(() => _currentIndex = 0);
     }
   }
@@ -80,17 +82,17 @@ class _MainScreenState extends State<MainScreen> {
     final List<Widget> pages = [
       const HomeScreen(),
       const SearchScreen(),
-      const WebSeriesScreen(), // Naya Tab
-      if (widget.isAdultMode) const AdultScreen(),
-      SettingsScreen(onToggleAdultMode: widget.onModeChanged),
+      const WebSeriesScreen(), // Index 2
+      if (widget.isAdultMode) const AdultScreen(), // Index 3 (Dynamic)
+      SettingsScreen(onToggleAdultMode: widget.onModeChanged), // Index 3 ya 4
     ];
 
     final List<BottomNavigationBarItem> navItems = [
       const BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
       const BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
-      const BottomNavigationBarItem(icon: Icon(Icons.link), label: 'Direct'), // Naya Tab
-      if (widget.isAdultMode) const BottomNavigationBarItem(icon: Icon(Icons.local_fire_department), label: '18+'),
-      const BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings'),
+      const BottomNavigationBarItem(icon: Icon(Icons.link), label: 'Direct'), // Index 2
+      if (widget.isAdultMode) const BottomNavigationBarItem(icon: Icon(Icons.local_fire_department), label: '18+'), // Index 3
+      const BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings'), // Index 3 ya 4
     ];
 
     return Scaffold(
