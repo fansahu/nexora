@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'player.dart';
 
 class DetailsScreen extends StatefulWidget {
@@ -17,8 +18,8 @@ class DetailsScreen extends StatefulWidget {
 class _DetailsScreenState extends State<DetailsScreen> {
   Map<String, dynamic>? data;
   String apiKey = '';
+  String errorMsg = '';
   
-  // Season/Episode variables
   List<dynamic> seasons = [];
   List<dynamic> episodes = [];
   int selectedSeason = 1;
@@ -31,39 +32,48 @@ class _DetailsScreenState extends State<DetailsScreen> {
   }
 
   void _load() async {
-    final prefs = await SharedPreferences.getInstance();
-    apiKey = prefs.getString('tmdb_key') ?? '';
-    final res = await http.get(Uri.parse('https://api.themoviedb.org/3/${widget.type}/${widget.id}?api_key=$apiKey'));
-    
-    if (res.statusCode == 200) {
-      setState(() {
-        data = json.decode(res.body);
-        if (widget.type == 'tv' && data!['seasons'] != null) {
-          seasons = data!['seasons'];
-          // First valid season select karo (0 skip karo kyunki wo specials hote hain)
-          if (seasons.isNotEmpty) {
-            var validSeason = seasons.firstWhere((s) => s['season_number'] != 0, orElse: () => seasons.first);
-            selectedSeason = validSeason['season_number'];
-            _loadEpisodes(selectedSeason);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      apiKey = prefs.getString('tmdb_key') ?? '';
+      
+      final res = await http.get(Uri.parse('https://api.themoviedb.org/3/${widget.type}/${widget.id}?api_key=$apiKey'))
+          .timeout(const Duration(seconds: 15));
+      
+      if (res.statusCode == 200) {
+        setState(() {
+          data = json.decode(res.body);
+          if (widget.type == 'tv' && data!['seasons'] != null) {
+            seasons = data!['seasons'];
+            if (seasons.isNotEmpty) {
+              var validSeason = seasons.firstWhere((s) => s['season_number'] != 0, orElse: () => seasons.first);
+              selectedSeason = validSeason['season_number'];
+              _loadEpisodes(selectedSeason);
+            }
           }
-        }
-      });
+        });
+      } else {
+        setState(() => errorMsg = 'Failed to load details. Check API Key.');
+      }
+    } catch (e) {
+      setState(() => errorMsg = 'Network Timeout. Try again.');
     }
   }
 
   void _loadEpisodes(int seasonNum) async {
     setState(() => isLoadingEpisodes = true);
-    final res = await http.get(Uri.parse('https://api.themoviedb.org/3/tv/${widget.id}/season/$seasonNum?api_key=$apiKey'));
-    if (res.statusCode == 200) {
-      setState(() {
-        episodes = json.decode(res.body)['episodes'] ?? [];
-        isLoadingEpisodes = false;
-      });
-    } else {
-      setState(() {
-        episodes = [];
-        isLoadingEpisodes = false;
-      });
+    try {
+      final res = await http.get(Uri.parse('https://api.themoviedb.org/3/tv/${widget.id}/season/$seasonNum?api_key=$apiKey'))
+          .timeout(const Duration(seconds: 15));
+      if (res.statusCode == 200) {
+        setState(() {
+          episodes = json.decode(res.body)['episodes'] ?? [];
+          isLoadingEpisodes = false;
+        });
+      } else {
+        setState(() { episodes = []; isLoadingEpisodes = false; });
+      }
+    } catch (e) {
+      setState(() { episodes = []; isLoadingEpisodes = false; });
     }
   }
 
@@ -80,6 +90,7 @@ class _DetailsScreenState extends State<DetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (errorMsg.isNotEmpty) return Scaffold(backgroundColor: Colors.black, appBar: AppBar(), body: Center(child: Text(errorMsg, style: const TextStyle(color: Colors.redAccent))));
     if (data == null) return const Scaffold(backgroundColor: Colors.black, body: Center(child: CircularProgressIndicator(color: Colors.redAccent)));
     
     return Scaffold(
@@ -89,11 +100,14 @@ class _DetailsScreenState extends State<DetailsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Backdrop Image
             Stack(
               children: [
                 if (data!['backdrop_path'] != null)
-                  Image.network('https://image.tmdb.org/t/p/w780${data!['backdrop_path']}', width: double.infinity, height: 280, fit: BoxFit.cover)
+                  CachedNetworkImage(
+                    imageUrl: 'https://image.tmdb.org/t/p/w780${data!['backdrop_path']}',
+                    width: double.infinity, height: 280, fit: BoxFit.cover,
+                    placeholder: (context, url) => Container(height: 280, color: Colors.grey[900]),
+                  )
                 else
                   Container(height: 280, color: Colors.grey[900]),
                 Positioned.fill(
@@ -105,8 +119,6 @@ class _DetailsScreenState extends State<DetailsScreen> {
                 ),
               ],
             ),
-            
-            // Poster & Title
             Transform.translate(
               offset: const Offset(0, -60),
               child: Padding(
@@ -119,7 +131,7 @@ class _DetailsScreenState extends State<DetailsScreen> {
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(12),
                         child: widget.posterPath != null 
-                          ? Image.network('https://image.tmdb.org/t/p/w200${widget.posterPath}', width: 110) 
+                          ? CachedNetworkImage(imageUrl: 'https://image.tmdb.org/t/p/w200${widget.posterPath}', width: 110, fit: BoxFit.cover) 
                           : Container(width: 110, height: 165, color: Colors.grey[800]),
                       ),
                     ),
@@ -146,8 +158,6 @@ class _DetailsScreenState extends State<DetailsScreen> {
                 ),
               ),
             ),
-
-            // Overview & Watch Button
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Column(
@@ -155,8 +165,7 @@ class _DetailsScreenState extends State<DetailsScreen> {
                 children: [
                   if (widget.type == 'movie')
                     SizedBox(
-                      width: double.infinity,
-                      height: 50,
+                      width: double.infinity, height: 50,
                       child: ElevatedButton.icon(
                         style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
                         icon: const Icon(Icons.play_arrow, color: Colors.white),
@@ -175,8 +184,6 @@ class _DetailsScreenState extends State<DetailsScreen> {
                 ],
               ),
             ),
-
-            // Episodes Section (Only for TV Series)
             if (widget.type == 'tv' && seasons.isNotEmpty) ...[
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -191,10 +198,7 @@ class _DetailsScreenState extends State<DetailsScreen> {
                       underline: const SizedBox(),
                       icon: const Icon(Icons.arrow_drop_down, color: Colors.redAccent),
                       items: seasons.where((s) => s['season_number'] != 0).map<DropdownMenuItem<int>>((s) {
-                        return DropdownMenuItem<int>(
-                          value: s['season_number'],
-                          child: Text('Season ${s['season_number']}'),
-                        );
+                        return DropdownMenuItem<int>(value: s['season_number'], child: Text('Season ${s['season_number']}'));
                       }).toList(),
                       onChanged: (val) {
                         if (val != null) {
@@ -224,12 +228,7 @@ class _DetailsScreenState extends State<DetailsScreen> {
                         onTap: () {
                           _addToHistory();
                           Navigator.push(context, MaterialPageRoute(
-                            builder: (_) => PlayerScreen(
-                              id: widget.id, 
-                              type: 'tv', 
-                              season: selectedSeason, 
-                              episode: ep['episode_number']
-                            )
+                            builder: (_) => PlayerScreen(id: widget.id, type: 'tv', season: selectedSeason, episode: ep['episode_number'])
                           ));
                         },
                         child: Container(
@@ -243,7 +242,7 @@ class _DetailsScreenState extends State<DetailsScreen> {
                                 child: ClipRRect(
                                   borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
                                   child: ep['still_path'] != null
-                                      ? Image.network('https://image.tmdb.org/t/p/w300${ep['still_path']}', width: double.infinity, fit: BoxFit.cover)
+                                      ? CachedNetworkImage(imageUrl: 'https://image.tmdb.org/t/p/w300${ep['still_path']}', width: double.infinity, fit: BoxFit.cover)
                                       : Container(color: Colors.grey[800], child: const Center(child: Icon(Icons.movie, color: Colors.grey))),
                                 ),
                               ),
