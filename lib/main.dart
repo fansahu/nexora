@@ -5,13 +5,10 @@ import 'search.dart';
 import 'settings.dart';
 import 'adult.dart';
 
-void main() {
-  runApp(const NexoraApp());
-}
+void main() => runApp(const NexoraApp());
 
 class NexoraApp extends StatefulWidget {
   const NexoraApp({super.key});
-
   @override
   State<NexoraApp> createState() => _NexoraAppState();
 }
@@ -23,21 +20,17 @@ class _NexoraAppState extends State<NexoraApp> {
   @override
   void initState() {
     super.initState();
-    _loadPreferences();
-  }
-
-  Future<void> _loadPreferences() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      isAdultMode = prefs.getBool('adult_mode') ?? false;
-      isLoading = false;
+    SharedPreferences.getInstance().then((prefs) {
+      setState(() {
+        isAdultMode = prefs.getBool('adult_mode') ?? false;
+        isLoading = false;
+      });
     });
   }
 
   @override
   Widget build(BuildContext context) {
     if (isLoading) return const Center(child: CircularProgressIndicator(color: Colors.redAccent));
-
     return MaterialApp(
       title: 'Nexora',
       debugShowCheckedModeBanner: false,
@@ -45,9 +38,7 @@ class _NexoraAppState extends State<NexoraApp> {
         scaffoldBackgroundColor: Colors.black,
         appBarTheme: const AppBarTheme(backgroundColor: Colors.black, elevation: 0),
         bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-          backgroundColor: Color(0xFF1E1E1E),
-          selectedItemColor: Colors.redAccent,
-          unselectedItemColor: Colors.grey,
+          backgroundColor: Color(0xFF1E1E1E), selectedItemColor: Colors.redAccent, unselectedItemColor: Colors.grey,
         ),
       ),
       home: MainScreen(isAdultMode: isAdultMode),
@@ -58,7 +49,6 @@ class _NexoraAppState extends State<NexoraApp> {
 class MainScreen extends StatefulWidget {
   final bool isAdultMode;
   const MainScreen({super.key, required this.isAdultMode});
-
   @override
   State<MainScreen> createState() => _MainScreenState();
 }
@@ -97,8 +87,7 @@ class _MainScreenState extends State<MainScreen> {
         items: [
           const BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           const BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
-          if (_adultMode)
-            const BottomNavigationBarItem(icon: Icon(Icons.local_fire_department), label: '18+'),
+          if (_adultMode) const BottomNavigationBarItem(icon: Icon(Icons.local_fire_department), label: '18+'),
           const BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings'),
         ],
       ),
